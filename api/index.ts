@@ -196,20 +196,27 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Logging middleware for debugging Vercel routing
+app.use((req, res, next) => {
+  console.log(`[DEBUG] Incoming request: ${req.method} ${req.url}`);
+  next();
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
 const apiRouter = express.Router();
 
-apiRouter.get("/", (req, res) => {
-  res.json({ message: "Money Flow Debugger API" });
-});
-
 // API Endpoints on the router
 apiRouter.get("/analysis", (req, res) => {
-  console.log("GET /api/analysis");
-  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
+  console.log("[DEBUG] GET /api/analysis");
+  const sampleCsvPath = path.join(process.cwd(), "data", "sample_transactions.csv");
+  console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
+  if (!fs.existsSync(sampleCsvPath)) {
+    console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
+    return res.status(500).json({ error: "Sample data file not found" });
+  }
   const sampleCsv = fs.readFileSync(sampleCsvPath, "utf-8");
   const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
   res.json(analyzeTransactions(transactions));
@@ -217,8 +224,13 @@ apiRouter.get("/analysis", (req, res) => {
 
 apiRouter.get("/sample-data", (req, res) => {
   const { fromCountry, toCountry } = req.query;
-  console.log(`GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
+  console.log(`[DEBUG] GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
+  const sampleCsvPath = path.join(process.cwd(), "data", "sample_transactions.csv");
+  console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
+  if (!fs.existsSync(sampleCsvPath)) {
+    console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
+    return res.status(500).json({ error: "Sample data file not found" });
+  }
   const sampleCsv = fs.readFileSync(sampleCsvPath, "utf-8");
   const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
   res.json(analyzeTransactions(transactions));
@@ -245,20 +257,10 @@ apiRouter.post("/analyze", upload.single('file'), (req, res) => {
   }
 });
 
-// Mount the router on /api
+// Mount the router at both root and /api to be robust against Vercel prefix stripping
+// Since apiRouter no longer has a root route, it won't catch "/"
+app.use("/", apiRouter);
 app.use("/api", apiRouter);
-
-// Catch-all for API Router
-apiRouter.all("*", (req, res) => {
-  console.log(`404 API Router: ${req.method} ${req.url}`);
-  res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
-});
-
-// Catch-all for API routes to prevent falling back to index.html
-app.all("/api/*", (req, res) => {
-  console.log(`404 API: ${req.method} ${req.url}`);
-  res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
-});
 
 async function startServer() {
   // Vite middleware for development
@@ -269,16 +271,28 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else if (!process.env.VERCEL) {
-    const distPath = path.join(__dirname, "..", "dist");
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
+  // Catch-all for everything else to help debugging
+  // This MUST be registered after all other routes/middleware
+  app.use((req, res) => {
+    console.log(`[DEBUG] 404 Final Catch-all: ${req.method} ${req.url}`);
+    res.status(404).json({ 
+      error: `Route not found: ${req.method} ${req.url}`,
+      hint: "If you see this, the request reached the Express server but didn't match any routes.",
+      url: req.url,
+      method: req.method
+    });
+  });
+
   if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`[DEBUG] Server running on http://localhost:${PORT}`);
     });
   }
 }
