@@ -198,22 +198,23 @@ app.use(express.json());
 
 // Logging middleware for debugging Vercel routing
 app.use((req, res, next) => {
-  console.log(`[DEBUG] Incoming request: ${req.method} ${req.url}`);
+  console.log(`[DEBUG] Incoming request: ${req.method} ${req.url} (Original: ${req.originalUrl})`);
   next();
 });
 
-app.get("/api/health", (req, res) => {
+const apiRouter = express.Router();
+
+apiRouter.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.get("/api/ping", (req, res) => {
+apiRouter.get("/ping", (req, res) => {
   res.json({ status: "pong", timestamp: new Date().toISOString() });
 });
 
-// API Endpoints directly on the app
-app.get("/api/analysis", (req, res) => {
+apiRouter.get("/analysis", (req, res) => {
   console.log("[DEBUG] GET /api/analysis");
-  const sampleCsvPath = path.join(process.cwd(), "sample_transactions.csv");
+  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
   console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
   if (!fs.existsSync(sampleCsvPath)) {
     console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
@@ -224,10 +225,10 @@ app.get("/api/analysis", (req, res) => {
   res.json(analyzeTransactions(transactions));
 });
 
-app.get("/api/sample-data", (req, res) => {
+apiRouter.get("/sample-data", (req, res) => {
   const { fromCountry, toCountry } = req.query;
   console.log(`[DEBUG] GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-  const sampleCsvPath = path.join(process.cwd(), "sample_transactions.csv");
+  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
   console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
   if (!fs.existsSync(sampleCsvPath)) {
     console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
@@ -238,7 +239,7 @@ app.get("/api/sample-data", (req, res) => {
   res.json(analyzeTransactions(transactions));
 });
 
-app.post("/api/analyze", upload.single('file'), (req, res) => {
+apiRouter.post("/analyze", upload.single('file'), (req, res) => {
   console.log("[DEBUG] POST /api/analyze");
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
@@ -258,6 +259,10 @@ app.post("/api/analyze", upload.single('file'), (req, res) => {
     res.status(500).json({ error: "Failed to parse CSV: " + error.message });
   }
 });
+
+// Mount the router at both /api and /api/server (for Vercel rewrites)
+app.use("/api", apiRouter);
+app.use("/api/server", apiRouter);
 
 // Catch-all for API routes to help debugging
 app.use((req, res, next) => {
