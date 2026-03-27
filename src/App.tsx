@@ -675,8 +675,15 @@ export default function App() {
         body: formData,
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || errData.error || 'Failed to analyze CSV');
+        const text = await res.text();
+        let errorMessage = 'Failed to analyze CSV';
+        try {
+          const errData = JSON.parse(text);
+          errorMessage = errData.detail || errData.error || errorMessage;
+        } catch (e) {
+          errorMessage = text.slice(0, 100) || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       const result = await res.json();
       setData(result);
@@ -694,8 +701,15 @@ export default function App() {
     try {
       const res = await fetch(`/api/sample-data?fromCountry=${from}&toCountry=${to}`);
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || 'Failed to fetch sample data');
+        const text = await res.text();
+        let errorMessage = 'Failed to fetch sample data';
+        try {
+          const errData = JSON.parse(text);
+          errorMessage = errData.detail || errorMessage;
+        } catch (e) {
+          errorMessage = text.slice(0, 100) || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       const result = await res.json();
       setData(result);

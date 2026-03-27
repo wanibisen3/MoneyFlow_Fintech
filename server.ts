@@ -191,61 +191,61 @@ function analyzeTransactions(transactions: Transaction[]) {
   };
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = 3000;
 
-  app.use(express.json());
+app.use(express.json());
 
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
-  });
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
-  // API Endpoints
-  app.get("/api/analysis", (req, res) => {
-    console.log("GET /api/analysis");
-    const sampleCsv = fs.readFileSync(path.join(process.cwd(), "sample_transactions.csv"), "utf-8");
-    const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
-    res.json(analyzeTransactions(transactions));
-  });
+// API Endpoints
+app.get("/api/analysis", (req, res) => {
+  console.log("GET /api/analysis");
+  const sampleCsv = fs.readFileSync(path.join(process.cwd(), "sample_transactions.csv"), "utf-8");
+  const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
+  res.json(analyzeTransactions(transactions));
+});
 
-  app.get("/api/sample-data", (req, res) => {
-    const { fromCountry, toCountry } = req.query;
-    console.log(`GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-    const sampleCsv = fs.readFileSync(path.join(process.cwd(), "sample_transactions.csv"), "utf-8");
-    const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
-    res.json(analyzeTransactions(transactions));
-  });
+app.get("/api/sample-data", (req, res) => {
+  const { fromCountry, toCountry } = req.query;
+  console.log(`GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
+  const sampleCsv = fs.readFileSync(path.join(process.cwd(), "sample_transactions.csv"), "utf-8");
+  const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
+  res.json(analyzeTransactions(transactions));
+});
 
-  app.post("/api/analyze", upload.single('file'), (req, res) => {
-    console.log("POST /api/analyze");
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+app.post("/api/analyze", upload.single('file'), (req, res) => {
+  console.log("POST /api/analyze");
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+  
+  try {
+    const csvContent = req.file.buffer.toString("utf-8");
+    const transactions = parse(csvContent, { columns: true, skip_empty_lines: true }) as Transaction[];
     
-    try {
-      const csvContent = req.file.buffer.toString("utf-8");
-      const transactions = parse(csvContent, { columns: true, skip_empty_lines: true }) as Transaction[];
-      
-      console.log(`Analyzing file: ${req.file.originalname}, rows: ${transactions.length}`);
-      
-      setTimeout(() => {
-        res.json(analyzeTransactions(transactions));
-      }, 1500);
-    } catch (error: any) {
-      console.error("Analysis error:", error);
-      res.status(500).json({ error: "Failed to parse CSV: " + error.message });
-    }
-  });
+    console.log(`Analyzing file: ${req.file.originalname}, rows: ${transactions.length}`);
+    
+    setTimeout(() => {
+      res.json(analyzeTransactions(transactions));
+    }, 1500);
+  } catch (error: any) {
+    console.error("Analysis error:", error);
+    res.status(500).json({ error: "Failed to parse CSV: " + error.message });
+  }
+});
 
-  // Catch-all for API routes to prevent falling back to index.html
-  app.all("/api/*", (req, res) => {
-    console.log(`404 API: ${req.method} ${req.url}`);
-    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
-  });
+// Catch-all for API routes to prevent falling back to index.html
+app.all("/api/*", (req, res) => {
+  console.log(`404 API: ${req.method} ${req.url}`);
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+});
 
+async function startServer() {
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -259,9 +259,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;
