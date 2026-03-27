@@ -202,7 +202,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/health", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
@@ -210,10 +210,10 @@ app.get("/api/ping", (req, res) => {
   res.json({ status: "pong", timestamp: new Date().toISOString() });
 });
 
-// API Endpoints directly on the app to avoid router mounting issues
+// API Endpoints directly on the app
 app.get("/api/analysis", (req, res) => {
   console.log("[DEBUG] GET /api/analysis");
-  const sampleCsvPath = path.join(process.cwd(), "api", "sample_transactions.csv");
+  const sampleCsvPath = path.join(process.cwd(), "sample_transactions.csv");
   console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
   if (!fs.existsSync(sampleCsvPath)) {
     console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
@@ -227,7 +227,7 @@ app.get("/api/analysis", (req, res) => {
 app.get("/api/sample-data", (req, res) => {
   const { fromCountry, toCountry } = req.query;
   console.log(`[DEBUG] GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-  const sampleCsvPath = path.join(process.cwd(), "api", "sample_transactions.csv");
+  const sampleCsvPath = path.join(process.cwd(), "sample_transactions.csv");
   console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
   if (!fs.existsSync(sampleCsvPath)) {
     console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
@@ -259,9 +259,8 @@ app.post("/api/analyze", upload.single('file'), (req, res) => {
   }
 });
 
-// Catch-all for everything else to help debugging
+// Catch-all for API routes to help debugging
 app.use((req, res, next) => {
-  // If it's an API route that wasn't caught, return JSON 404
   if (req.url.startsWith("/api")) {
     console.log(`[DEBUG] 404 API Catch-all: ${req.method} ${req.url}`);
     return res.status(404).json({ 
