@@ -203,7 +203,8 @@ app.get("/health", (req, res) => {
 // API Endpoints
 app.get("/api/analysis", (req, res) => {
   console.log("GET /api/analysis");
-  const sampleCsv = fs.readFileSync(path.join(process.cwd(), "sample_transactions.csv"), "utf-8");
+  const sampleCsvPath = path.join(__dirname, "..", "sample_transactions.csv");
+  const sampleCsv = fs.readFileSync(sampleCsvPath, "utf-8");
   const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
   res.json(analyzeTransactions(transactions));
 });
@@ -211,7 +212,8 @@ app.get("/api/analysis", (req, res) => {
 app.get("/api/sample-data", (req, res) => {
   const { fromCountry, toCountry } = req.query;
   console.log(`GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-  const sampleCsv = fs.readFileSync(path.join(process.cwd(), "sample_transactions.csv"), "utf-8");
+  const sampleCsvPath = path.join(__dirname, "..", "sample_transactions.csv");
+  const sampleCsv = fs.readFileSync(sampleCsvPath, "utf-8");
   const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
   res.json(analyzeTransactions(transactions));
 });
@@ -251,8 +253,8 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
+  } else if (!process.env.VERCEL) {
+    const distPath = path.join(__dirname, "..", "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));

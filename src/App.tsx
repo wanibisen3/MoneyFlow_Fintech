@@ -676,12 +676,12 @@ export default function App() {
       });
       if (!res.ok) {
         const text = await res.text();
-        let errorMessage = 'Failed to analyze CSV';
+        let errorMessage = `Failed to analyze CSV (URL: ${res.url})`;
         try {
           const errData = JSON.parse(text);
           errorMessage = errData.detail || errData.error || errorMessage;
         } catch (e) {
-          errorMessage = text.slice(0, 100) || errorMessage;
+          errorMessage = `${errorMessage}: ${text.slice(0, 100)}`;
         }
         throw new Error(errorMessage);
       }
@@ -702,12 +702,12 @@ export default function App() {
       const res = await fetch(`/api/sample-data?fromCountry=${from}&toCountry=${to}`);
       if (!res.ok) {
         const text = await res.text();
-        let errorMessage = 'Failed to fetch sample data';
+        let errorMessage = `Failed to fetch sample data (URL: ${res.url})`;
         try {
           const errData = JSON.parse(text);
           errorMessage = errData.detail || errorMessage;
         } catch (e) {
-          errorMessage = text.slice(0, 100) || errorMessage;
+          errorMessage = `${errorMessage}: ${text.slice(0, 100)}`;
         }
         throw new Error(errorMessage);
       }
