@@ -206,12 +206,14 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-const apiRouter = express.Router();
+app.get("/api/ping", (req, res) => {
+  res.json({ status: "pong", timestamp: new Date().toISOString() });
+});
 
-// API Endpoints on the router
-apiRouter.get("/analysis", (req, res) => {
+// API Endpoints directly on the app to avoid router mounting issues
+app.get("/api/analysis", (req, res) => {
   console.log("[DEBUG] GET /api/analysis");
-  const sampleCsvPath = path.join(process.cwd(), "data", "sample_transactions.csv");
+  const sampleCsvPath = path.join(process.cwd(), "api", "sample_transactions.csv");
   console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
   if (!fs.existsSync(sampleCsvPath)) {
     console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
@@ -222,10 +224,10 @@ apiRouter.get("/analysis", (req, res) => {
   res.json(analyzeTransactions(transactions));
 });
 
-apiRouter.get("/sample-data", (req, res) => {
+app.get("/api/sample-data", (req, res) => {
   const { fromCountry, toCountry } = req.query;
   console.log(`[DEBUG] GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-  const sampleCsvPath = path.join(process.cwd(), "data", "sample_transactions.csv");
+  const sampleCsvPath = path.join(process.cwd(), "api", "sample_transactions.csv");
   console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
   if (!fs.existsSync(sampleCsvPath)) {
     console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
@@ -236,8 +238,8 @@ apiRouter.get("/sample-data", (req, res) => {
   res.json(analyzeTransactions(transactions));
 });
 
-apiRouter.post("/analyze", upload.single('file'), (req, res) => {
-  console.log("POST /api/analyze");
+app.post("/api/analyze", upload.single('file'), (req, res) => {
+  console.log("[DEBUG] POST /api/analyze");
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
@@ -246,21 +248,31 @@ apiRouter.post("/analyze", upload.single('file'), (req, res) => {
     const csvContent = req.file.buffer.toString("utf-8");
     const transactions = parse(csvContent, { columns: true, skip_empty_lines: true }) as Transaction[];
     
-    console.log(`Analyzing file: ${req.file.originalname}, rows: ${transactions.length}`);
+    console.log(`[DEBUG] Analyzing file: ${req.file.originalname}, rows: ${transactions.length}`);
     
     setTimeout(() => {
       res.json(analyzeTransactions(transactions));
     }, 1500);
   } catch (error: any) {
-    console.error("Analysis error:", error);
+    console.error("[ERROR] Analysis error:", error);
     res.status(500).json({ error: "Failed to parse CSV: " + error.message });
   }
 });
 
-// Mount the router at both root and /api to be robust against Vercel prefix stripping
-// Since apiRouter no longer has a root route, it won't catch "/"
-app.use("/", apiRouter);
-app.use("/api", apiRouter);
+// Catch-all for everything else to help debugging
+app.use((req, res, next) => {
+  // If it's an API route that wasn't caught, return JSON 404
+  if (req.url.startsWith("/api")) {
+    console.log(`[DEBUG] 404 API Catch-all: ${req.method} ${req.url}`);
+    return res.status(404).json({ 
+      error: `API Route not found: ${req.method} ${req.url}`,
+      hint: "If you see this, the request reached the Express server but didn't match any /api routes.",
+      url: req.url,
+      method: req.method
+    });
+  }
+  next();
+});
 
 async function startServer() {
   // Vite middleware for development
@@ -277,18 +289,6 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-
-  // Catch-all for everything else to help debugging
-  // This MUST be registered after all other routes/middleware
-  app.use((req, res) => {
-    console.log(`[DEBUG] 404 Final Catch-all: ${req.method} ${req.url}`);
-    res.status(404).json({ 
-      error: `Route not found: ${req.method} ${req.url}`,
-      hint: "If you see this, the request reached the Express server but didn't match any routes.",
-      url: req.url,
-      method: req.method
-    });
-  });
 
   if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
