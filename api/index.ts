@@ -200,25 +200,31 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// API Endpoints
-app.get("/api/analysis", (req, res) => {
+const apiRouter = express.Router();
+
+apiRouter.get("/", (req, res) => {
+  res.json({ message: "Money Flow Debugger API" });
+});
+
+// API Endpoints on the router
+apiRouter.get("/analysis", (req, res) => {
   console.log("GET /api/analysis");
-  const sampleCsvPath = path.join(__dirname, "..", "sample_transactions.csv");
+  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
   const sampleCsv = fs.readFileSync(sampleCsvPath, "utf-8");
   const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
   res.json(analyzeTransactions(transactions));
 });
 
-app.get("/api/sample-data", (req, res) => {
+apiRouter.get("/sample-data", (req, res) => {
   const { fromCountry, toCountry } = req.query;
   console.log(`GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-  const sampleCsvPath = path.join(__dirname, "..", "sample_transactions.csv");
+  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
   const sampleCsv = fs.readFileSync(sampleCsvPath, "utf-8");
   const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
   res.json(analyzeTransactions(transactions));
 });
 
-app.post("/api/analyze", upload.single('file'), (req, res) => {
+apiRouter.post("/analyze", upload.single('file'), (req, res) => {
   console.log("POST /api/analyze");
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
@@ -237,6 +243,15 @@ app.post("/api/analyze", upload.single('file'), (req, res) => {
     console.error("Analysis error:", error);
     res.status(500).json({ error: "Failed to parse CSV: " + error.message });
   }
+});
+
+// Mount the router on /api
+app.use("/api", apiRouter);
+
+// Catch-all for API Router
+apiRouter.all("*", (req, res) => {
+  console.log(`404 API Router: ${req.method} ${req.url}`);
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
 });
 
 // Catch-all for API routes to prevent falling back to index.html
