@@ -204,6 +204,13 @@ app.use((req, res, next) => {
 
 const apiRouter = express.Router();
 
+apiRouter.get("/", (req, res) => {
+  res.json({ 
+    message: "Money Flow Intelligence API is ready",
+    endpoints: ["/api/ping", "/api/analysis", "/api/sample-data", "/api/debug"]
+  });
+});
+
 apiRouter.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
@@ -273,6 +280,16 @@ apiRouter.post("/analyze", upload.single('file'), (req, res) => {
     console.error("[ERROR] Analysis error:", error);
     res.status(500).json({ error: "Failed to parse CSV: " + error.message });
   }
+});
+
+// API-specific catch-all
+apiRouter.use((req, res) => {
+  console.log(`[DEBUG] API Router 404: ${req.method} ${req.url}`);
+  res.status(404).json({
+    error: `API Route not found: ${req.method} ${req.url}`,
+    hint: "The request reached the API router but didn't match any endpoints.",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Mount the router at /api (standard for Vercel and local)
