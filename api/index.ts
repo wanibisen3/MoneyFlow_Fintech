@@ -212,6 +212,21 @@ apiRouter.get("/ping", (req, res) => {
   res.json({ status: "pong", timestamp: new Date().toISOString() });
 });
 
+apiRouter.get("/debug", (req, res) => {
+  res.json({
+    url: req.url,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+    path: req.path,
+    params: req.params,
+    query: req.query,
+    env: {
+      VERCEL: process.env.VERCEL,
+      NODE_ENV: process.env.NODE_ENV
+    }
+  });
+});
+
 apiRouter.get("/analysis", (req, res) => {
   console.log("[DEBUG] GET /api/analysis");
   const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
@@ -260,9 +275,9 @@ apiRouter.post("/analyze", upload.single('file'), (req, res) => {
   }
 });
 
-// Mount the router at both /api and /api/server (for Vercel rewrites)
+// Mount the router at both /api and / (for Vercel rewrites)
 app.use("/api", apiRouter);
-app.use("/api/server", apiRouter);
+app.use("/", apiRouter);
 
 // Catch-all for API routes to help debugging
 app.use((req, res, next) => {
