@@ -295,6 +295,21 @@ apiRouter.use((req, res) => {
 // Mount the router at /api (standard for Vercel and local)
 app.use("/api", apiRouter);
 
+// Catch-all for API routes to help debugging - ONLY at the very end
+app.use((req, res, next) => {
+  if (req.url.startsWith("/api")) {
+    console.log(`[DEBUG] 404 API Catch-all reached: ${req.method} ${req.url} (Original: ${req.originalUrl})`);
+    return res.status(404).json({ 
+      error: `API Route not found: ${req.method} ${req.url}`,
+      originalUrl: req.originalUrl,
+      path: req.path,
+      hint: "If you see this, the request reached the Express server but didn't match any /api routes.",
+      timestamp: new Date().toISOString()
+    });
+  }
+  next();
+});
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
@@ -310,23 +325,6 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-
-  // Catch-all for API routes to help debugging - ONLY at the very end
-  app.use((req, res) => {
-    if (req.url.startsWith("/api")) {
-      console.log(`[DEBUG] 404 API Catch-all reached: ${req.method} ${req.url} (Original: ${req.originalUrl})`);
-      return res.status(404).json({ 
-        error: `API Route not found: ${req.method} ${req.url}`,
-        originalUrl: req.originalUrl,
-        path: req.path,
-        hint: "If you see this, the request reached the Express server but didn't match any /api routes.",
-        timestamp: new Date().toISOString()
-      });
-    }
-    // For non-API routes, if we reach here, it means static files/Vite didn't handle it
-    console.log(`[DEBUG] 404 Non-API Catch-all reached: ${req.method} ${req.url}`);
-    res.status(404).send("Not Found");
-  });
 
   if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
