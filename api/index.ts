@@ -204,7 +204,7 @@ app.use((req, res, next) => {
 
 const apiRouter = express.Router();
 
-apiRouter.get("/", (req, res) => {
+apiRouter.get("/status", (req, res) => {
   res.json({ 
     message: "Money Flow Intelligence API is ready",
     endpoints: ["/api/ping", "/api/analysis", "/api/sample-data", "/api/debug"]
@@ -216,7 +216,21 @@ apiRouter.get("/health", (req, res) => {
 });
 
 apiRouter.get("/ping", (req, res) => {
+  console.log("[DEBUG] Ping reached");
   res.json({ status: "pong", timestamp: new Date().toISOString() });
+});
+
+apiRouter.get("/test-file", (req, res) => {
+  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
+  const exists = fs.existsSync(sampleCsvPath);
+  const dirFiles = fs.readdirSync(__dirname);
+  res.json({
+    path: sampleCsvPath,
+    exists,
+    dirFiles,
+    cwd: process.cwd(),
+    cwdFiles: fs.readdirSync(process.cwd())
+  });
 });
 
 apiRouter.get("/debug", (req, res) => {
@@ -250,12 +264,25 @@ apiRouter.get("/analysis", (req, res) => {
 apiRouter.get("/sample-data", (req, res) => {
   const { fromCountry, toCountry } = req.query;
   console.log(`[DEBUG] GET /api/sample-data: from=${fromCountry}, to=${toCountry}`);
-  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
-  console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
-  if (!fs.existsSync(sampleCsvPath)) {
-    console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
-    return res.status(500).json({ error: "Sample data file not found" });
+  
+  // Try multiple paths for Vercel compatibility
+  const possiblePaths = [
+    path.join(__dirname, "sample_transactions.csv"),
+    path.join(process.cwd(), "api", "sample_transactions.csv"),
+    path.join(process.cwd(), "sample_transactions.csv")
+  ];
+  
+  let sampleCsvPath = possiblePaths.find(p => fs.existsSync(p));
+  
+  if (!sampleCsvPath) {
+    console.error(`[ERROR] Sample CSV NOT FOUND. Tried: ${possiblePaths.join(", ")}`);
+    return res.status(500).json({ 
+      error: "Sample data file not found",
+      tried: possiblePaths
+    });
   }
+  
+  console.log(`[DEBUG] Using Sample CSV at: ${sampleCsvPath}`);
   const sampleCsv = fs.readFileSync(sampleCsvPath, "utf-8");
   const transactions = parse(sampleCsv, { columns: true, skip_empty_lines: true }) as Transaction[];
   res.json(analyzeTransactions(transactions));
