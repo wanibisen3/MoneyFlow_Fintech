@@ -2,10 +2,10 @@
   "version": 2,
   "functions": {
     "api/index.ts": {
-      "includeFiles": "data/sample_transactions.csv"
+      "includeFiles": "api/sample_transactions.csv"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.ts" }
+    { "source": "/api/(.*)", "destination": "/api" }
   ]
 }

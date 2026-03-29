@@ -269,10 +269,9 @@ apiRouter.get("/sample-data", (req, res) => {
   
   // Try multiple paths for Vercel compatibility
   const possiblePaths = [
-    path.join(process.cwd(), "data", "sample_transactions.csv"),
-    path.join(__dirname, "..", "data", "sample_transactions.csv"),
-    path.join(__dirname, "sample_transactions.csv"),
     path.join(process.cwd(), "api", "sample_transactions.csv"),
+    path.join(__dirname, "sample_transactions.csv"),
+    path.join(process.cwd(), "data", "sample_transactions.csv"),
     path.join(process.cwd(), "sample_transactions.csv")
   ];
   
@@ -344,6 +343,11 @@ app.get("/ping", (req, res) => {
 
 // Mount the router at /api (standard for Vercel and local)
 app.use("/api", apiRouter);
+
+// On Vercel, the rewrite might strip /api, so we also mount at /
+if (process.env.VERCEL) {
+  app.use("/", apiRouter);
+}
 
 // Server startup logic
 if (!process.env.VERCEL) {
