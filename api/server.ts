@@ -193,7 +193,7 @@ function analyzeTransactions(transactions: Transaction[]) {
 const app = express();
 const PORT = 3000;
 
-console.log("[DEBUG] api/index.ts loaded");
+console.log("[DEBUG] api/server.ts loaded");
 
 app.use(express.json());
 
@@ -204,6 +204,10 @@ app.use((req, res, next) => {
 });
 
 const apiRouter = express.Router();
+
+apiRouter.get("/", (req, res) => {
+  res.json({ message: "API Router Root" });
+});
 
 apiRouter.get("/status", (req, res) => {
   res.json({ 
