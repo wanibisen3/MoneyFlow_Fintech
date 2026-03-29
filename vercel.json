@@ -1,8 +1,11 @@
 {
   "version": 2,
   "functions": {
-    "api/[...catchall].ts": {
+    "api/server.ts": {
       "includeFiles": "api/sample_transactions.csv"
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/server.ts" }
+  ]
 }

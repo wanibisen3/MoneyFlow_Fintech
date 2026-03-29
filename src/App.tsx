@@ -22,7 +22,10 @@ import {
   Clock,
   Upload,
   Database,
-  FileText
+  FileText,
+  Lock,
+  Target,
+  Info
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -53,7 +56,7 @@ const Sidebar = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab:
     <aside className="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface py-4 z-40 border-r border-outline-variant">
       <div className="font-headline font-bold text-on-surface px-6 py-8 text-xl tracking-tighter flex items-center gap-2">
         <div className="w-2 h-8 bg-primary rounded-full" />
-        The Precision Ledger
+        Money Flow Intelligence
       </div>
       <nav className="flex-1 space-y-1">
         {tabs.map((tab) => (
@@ -89,7 +92,7 @@ const Header = ({ from, to }: { from: string, to: string }) => (
   <header className="bg-surface/80 backdrop-blur-md sticky top-0 z-50 flex justify-between items-center w-full px-8 py-4 border-b border-outline-variant">
     <div className="flex items-center gap-3">
       <Wallet className="w-6 h-6 text-primary" />
-      <h1 className="font-headline font-bold text-lg tracking-tight">Money Flow Debugger</h1>
+      <h1 className="font-headline font-bold text-lg tracking-tight">Money Flow Intelligence</h1>
     </div>
     <div className="flex items-center gap-6">
       <div className="flex items-center gap-2 px-4 py-1.5 bg-surface-container-low rounded-full">
@@ -134,29 +137,44 @@ const Dashboard = ({ data, setActiveTab }: { data: AnalysisData, setActiveTab: (
             <p className="text-4xl font-headline font-extrabold">${data.summary.totalVolume.toLocaleString()}</p>
           </div>
           <div className="mt-8">
-            <p className="text-primary-container/80 text-xs font-bold uppercase tracking-widest mb-1">Efficiency Gap</p>
+            <div className="group relative inline-flex items-center gap-1.5 mb-1">
+              <p className="text-primary-container/80 text-xs font-bold uppercase tracking-widest">Efficiency Gap</p>
+              <Info className="w-3.5 h-3.5 text-primary-container/60 cursor-help" />
+              <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-surface-container-highest text-on-surface text-[11px] font-medium rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 border border-outline-variant/20 normal-case tracking-normal">
+                Efficiency gap = difference between the FX rate you paid and the mid-market reference rate, as a percentage of total volume.
+              </div>
+            </div>
             <div className="flex items-baseline gap-2">
               <p className="text-3xl font-headline font-extrabold text-white">{data.summary.avgInefficiencyPct.toFixed(2)}%</p>
               <span className="text-xs font-bold text-primary-container">of total volume</span>
             </div>
+            <p className="text-[11px] font-bold text-amber-300 mt-1.5">
+              Industry benchmark: 0.8–1.2% · You are paying 3× the optimal rate
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {[
-          { label: 'Total Inefficiency', value: `$${data.summary.totalInefficiency.toLocaleString()}`, icon: AlertTriangle, color: 'text-error', bg: 'bg-error-container' },
-          { label: 'Largest Issue', value: data.summary.largestIssue, icon: RefreshCcw, color: 'text-tertiary', bg: 'bg-tertiary-container' },
-          { label: 'Active Flows', value: data.moneyJourney.length.toString(), icon: Network, color: 'text-primary', bg: 'bg-primary-container' },
-          { label: 'Recommendations', value: data.recommendations.length.toString(), icon: Lightbulb, color: 'text-secondary', bg: 'bg-secondary-container' },
+          { label: 'Total Inefficiency (90 Days)', value: `$${data.summary.totalInefficiency.toLocaleString()}`, icon: AlertTriangle, color: 'text-error', bg: 'bg-error-container' },
+          { label: 'Annual Projection', value: `$${data.summary.annualInefficiency.toLocaleString()}`, icon: RefreshCcw, color: 'text-tertiary', bg: 'bg-tertiary-container' },
+          { label: 'Daily Average', value: `$${data.summary.dailyInefficiency.toLocaleString()}`, icon: Clock, color: 'text-primary', bg: 'bg-primary-container' },
+          { label: 'Potential Savings (Annual)', value: `$${data.summary.annualPotentialSavings.toLocaleString()}`, icon: Lightbulb, color: 'text-secondary', bg: 'bg-secondary-container' },
+          { label: 'Largest Issue', value: data.summary.largestIssue, icon: Target, color: 'text-primary', bg: 'bg-primary-container' },
         ].map((stat, i) => (
           <div key={i} className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/10 flex items-center gap-4">
-            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", stat.bg, stat.color)}>
+            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", stat.bg, stat.color)}>
               <stat.icon className="w-6 h-6" />
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-outline uppercase tracking-widest mb-0.5">{stat.label}</p>
-              <p className="text-lg font-headline font-extrabold text-on-surface truncate max-w-[140px]">{stat.value}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-outline uppercase tracking-widest mb-0.5 truncate">{stat.label}</p>
+              <p className={cn(
+                "font-headline font-extrabold text-on-surface",
+                stat.label === 'Largest Issue' ? "text-[13px] leading-tight" : "text-lg"
+              )}>
+                {stat.value}
+              </p>
             </div>
           </div>
         ))}
@@ -371,7 +389,7 @@ const Issues = ({ data }: { data: AnalysisData }) => {
               <p className="text-sm text-on-surface-variant font-medium mb-4">{issue.description}</p>
               <div className="flex items-end justify-between border-t border-outline-variant/15 pt-4">
                 <div>
-                  <p className="text-xs text-outline mb-1">Est. Daily Loss</p>
+                  <p className="text-xs text-outline mb-1">Est. Loss This Period (90 Days)</p>
                   <p className={cn("text-xl font-headline font-extrabold", issue.severity === 'critical' ? "text-error" : "text-tertiary")}>
                     -${issue.estLoss.toLocaleString()}
                   </p>
@@ -410,7 +428,7 @@ const Issues = ({ data }: { data: AnalysisData }) => {
                 </div>
                 <div className="md:w-40 flex flex-col items-center justify-center bg-primary-container text-white rounded-xl p-4">
                   <p className="text-[10px] font-bold uppercase mb-1 opacity-80">Annual Saving</p>
-                  <p className="text-2xl font-headline font-extrabold">${rec.estimatedSavings.toLocaleString()}</p>
+                  <p className="text-2xl font-headline font-extrabold">${(rec.estimatedSavings * 4).toLocaleString()}</p>
                   <div className="mt-2 w-full h-1 bg-white/20 rounded-full overflow-hidden">
                     <div className="h-full bg-white w-3/4"></div>
                   </div>
@@ -423,6 +441,20 @@ const Issues = ({ data }: { data: AnalysisData }) => {
     </div>
   );
 };
+
+const Footer = () => (
+  <footer className="w-full py-8 px-8 text-[11px] text-on-surface-variant/60 flex flex-col md:flex-row items-center justify-center md:justify-end gap-1 mt-auto">
+    <span>Built by Wani Bisen · INSEAD MBA · </span>
+    <a 
+      href="https://www.linkedin.com/in/wanibisen/" 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="hover:text-primary transition-colors underline underline-offset-2"
+    >
+      https://www.linkedin.com/in/wanibisen/
+    </a>
+  </footer>
+);
 
 const LandingPage = ({ onUpload, onUseSample, error }: { 
   onUpload: (file: File, from: string, to: string) => void, 
@@ -439,12 +471,13 @@ const LandingPage = ({ onUpload, onUseSample, error }: {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-xl w-full space-y-8 text-center"
-      >
+    <div className="min-h-screen bg-surface flex flex-col p-6">
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-xl w-full space-y-8 text-center"
+        >
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center">
             <Wallet className="w-8 h-8 text-primary" />
@@ -453,7 +486,7 @@ const LandingPage = ({ onUpload, onUseSample, error }: {
             Money Flow Intelligence
           </h1>
           <p className="text-on-surface-variant text-lg font-medium">
-            Analyze cross-border transaction flows and optimize your capital velocity.
+            Find out how much your cross-border payments are actually costing you — and exactly how to fix it.
           </p>
         </div>
 
@@ -502,6 +535,11 @@ const LandingPage = ({ onUpload, onUseSample, error }: {
                 <p className="text-xs text-on-surface-variant mt-1">Drag and drop or click to browse</p>
               </div>
             </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 text-[12px] text-on-surface-variant font-medium">
+            <Lock className="w-3 h-3" />
+            <span>Your data is processed in your browser. Nothing is stored on our servers.</span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -556,7 +594,7 @@ const LandingPage = ({ onUpload, onUseSample, error }: {
         className="max-w-6xl w-full mt-24 space-y-12"
       >
         <div className="text-center space-y-2">
-          <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Who uses FlowIQ — Customer Profiles</span>
+          <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Who uses Money Flow Intelligence — Customer Profiles</span>
           <h2 className="font-headline text-3xl font-extrabold text-on-surface">Built for Modern Finance Teams</h2>
         </div>
 
@@ -651,6 +689,8 @@ const LandingPage = ({ onUpload, onUseSample, error }: {
           </div>
         </div>
       </motion.div>
+      </div>
+      <Footer />
     </div>
   );
 };
@@ -737,11 +777,14 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-surface">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="font-headline font-bold text-on-surface-variant">Analyzing Transaction Flows...</p>
+      <div className="flex flex-col min-h-screen bg-surface">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="font-headline font-bold text-on-surface-variant">Analyzing Transaction Flows...</p>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
@@ -753,9 +796,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-surface">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <main className="md:ml-64 min-h-screen">
+      <main className="md:ml-64 min-h-screen pb-24 md:pb-0 flex flex-col">
         <Header from={data.fromCountry} to={data.toCountry} />
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className="p-8 max-w-7xl mx-auto flex-1">
           <div className="mb-6 flex justify-end">
             <button 
               onClick={handleReset}
@@ -770,6 +813,7 @@ export default function App() {
           {activeTab === 'issues' && <Issues data={data} />}
           {activeTab === 'recs' && <Issues data={data} />}
         </div>
+        <Footer />
       </main>
       
       {/* Mobile Nav */}

@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from backend.routes import analyze
 import os
 
-app = FastAPI(title="SEA Money Flow Intelligence API")
+app = FastAPI(title="Money Flow Intelligence API")
 
 # Enable CORS for frontend
 app.add_middleware(

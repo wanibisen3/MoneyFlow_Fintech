@@ -1,5 +1,5 @@
 {
   "name": "Money Flow Intelligence",
-  "description": "Full-stack cross-border transaction analysis and optimization engine for the Singapore-Indonesia corridor.",
+  "description": "Detect cross-border payment inefficiencies across SEA corridors. Built for finance teams operating across Singapore, Indonesia, Malaysia and beyond.",
   "requestFramePermissions": []
 }

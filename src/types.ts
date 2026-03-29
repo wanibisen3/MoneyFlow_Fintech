@@ -6,8 +6,14 @@ export interface HeroInsight {
 export interface Summary {
   totalVolume: number;
   totalInefficiency: number;
+  annualInefficiency: number;
+  dailyInefficiency: number;
   avgInefficiencyPct: number;
   largestIssue: string;
+  largestIssuePct: number;
+  activeFlows: number;
+  potentialSavings: number;
+  annualPotentialSavings: number;
 }
 
 export interface MoneyJourneyStep {
