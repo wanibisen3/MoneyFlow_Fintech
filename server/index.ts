@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
@@ -268,6 +267,7 @@ apiRouter.get("/sample-data", (req, res) => {
   // Try multiple paths for Vercel compatibility
   const possiblePaths = [
     path.join(__dirname, "sample_transactions.csv"),
+    path.join(process.cwd(), "server", "sample_transactions.csv"),
     path.join(process.cwd(), "api", "sample_transactions.csv"),
     path.join(process.cwd(), "sample_transactions.csv")
   ];
@@ -319,6 +319,19 @@ apiRouter.use((req, res) => {
   });
 });
 
+// Debug route for Vercel
+app.get("/api/debug-vercel", (req, res) => {
+  res.json({
+    url: req.url,
+    originalUrl: req.originalUrl,
+    path: req.path,
+    env: {
+      VERCEL: process.env.VERCEL,
+      NODE_ENV: process.env.NODE_ENV
+    }
+  });
+});
+
 // Mount the router at /api (standard for Vercel and local)
 app.use("/api", apiRouter);
 
@@ -337,29 +350,30 @@ app.use((req, res, next) => {
   next();
 });
 
-async function startServer() {
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else if (!process.env.VERCEL) {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
+// Server startup logic
+if (!process.env.VERCEL) {
+  async function startServer() {
+    // Vite middleware for development
+    if (process.env.NODE_ENV !== "production") {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
 
-  if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`[DEBUG] Server running on http://localhost:${PORT}`);
     });
   }
+  startServer();
 }
-
-startServer();
 
 export default app;
