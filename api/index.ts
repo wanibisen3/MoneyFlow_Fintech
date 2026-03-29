@@ -267,7 +267,6 @@ apiRouter.get("/sample-data", (req, res) => {
   // Try multiple paths for Vercel compatibility
   const possiblePaths = [
     path.join(__dirname, "sample_transactions.csv"),
-    path.join(process.cwd(), "server", "sample_transactions.csv"),
     path.join(process.cwd(), "api", "sample_transactions.csv"),
     path.join(process.cwd(), "sample_transactions.csv")
   ];
