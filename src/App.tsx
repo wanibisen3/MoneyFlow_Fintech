@@ -661,6 +661,14 @@ export default function App() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    console.log("[DEBUG] App mounted, pinging API...");
+    fetch("/api/ping")
+      .then(res => res.json())
+      .then(data => console.log("[DEBUG] API Ping Response:", data))
+      .catch(err => console.error("[DEBUG] API Ping Error:", err));
+  }, []);
+
   const handleUpload = async (file: File, from: string, to: string) => {
     setLoading(true);
     setError(null);

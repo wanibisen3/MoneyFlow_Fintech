@@ -193,6 +193,8 @@ function analyzeTransactions(transactions: Transaction[]) {
 const app = express();
 const PORT = 3000;
 
+console.log("[DEBUG] api/index.ts loaded");
+
 app.use(express.json());
 
 // Logging middleware for debugging Vercel routing
@@ -216,19 +218,20 @@ apiRouter.get("/health", (req, res) => {
 
 apiRouter.get("/ping", (req, res) => {
   console.log("[DEBUG] Ping reached");
-  res.json({ status: "pong", timestamp: new Date().toISOString() });
+  res.json({ status: "pong", timestamp: new Date().toISOString(), vercel: !!process.env.VERCEL });
 });
 
 apiRouter.get("/test-file", (req, res) => {
-  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
+  const sampleCsvPath = path.join(process.cwd(), "data", "sample_transactions.csv");
   const exists = fs.existsSync(sampleCsvPath);
-  const dirFiles = fs.readdirSync(__dirname);
+  const dirFiles = fs.readdirSync(process.cwd());
   res.json({
     path: sampleCsvPath,
     exists,
     dirFiles,
     cwd: process.cwd(),
-    cwdFiles: fs.readdirSync(process.cwd())
+    apiFiles: fs.existsSync(path.join(process.cwd(), "api")) ? fs.readdirSync(path.join(process.cwd(), "api")) : [],
+    dataFiles: fs.existsSync(path.join(process.cwd(), "data")) ? fs.readdirSync(path.join(process.cwd(), "data")) : []
   });
 });
 
@@ -249,7 +252,7 @@ apiRouter.get("/debug", (req, res) => {
 
 apiRouter.get("/analysis", (req, res) => {
   console.log("[DEBUG] GET /api/analysis");
-  const sampleCsvPath = path.join(__dirname, "sample_transactions.csv");
+  const sampleCsvPath = path.join(process.cwd(), "data", "sample_transactions.csv");
   console.log(`[DEBUG] Sample CSV Path: ${sampleCsvPath}`);
   if (!fs.existsSync(sampleCsvPath)) {
     console.error(`[ERROR] Sample CSV NOT FOUND at ${sampleCsvPath}`);
@@ -266,6 +269,8 @@ apiRouter.get("/sample-data", (req, res) => {
   
   // Try multiple paths for Vercel compatibility
   const possiblePaths = [
+    path.join(process.cwd(), "data", "sample_transactions.csv"),
+    path.join(__dirname, "..", "data", "sample_transactions.csv"),
     path.join(__dirname, "sample_transactions.csv"),
     path.join(process.cwd(), "api", "sample_transactions.csv"),
     path.join(process.cwd(), "sample_transactions.csv")
@@ -314,12 +319,13 @@ apiRouter.use((req, res) => {
   res.status(404).json({
     error: `API Route not found: ${req.method} ${req.url}`,
     hint: "The request reached the API router but didn't match any endpoints.",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    vercel: !!process.env.VERCEL
   });
 });
 
 // Debug route for Vercel
-app.get("/api/debug-vercel", (req, res) => {
+apiRouter.get("/debug-vercel", (req, res) => {
   res.json({
     url: req.url,
     originalUrl: req.originalUrl,
@@ -331,23 +337,13 @@ app.get("/api/debug-vercel", (req, res) => {
   });
 });
 
+// Root-level ping for Vercel prefix stripping
+app.get("/ping", (req, res) => {
+  res.json({ status: "pong", vercel: !!process.env.VERCEL, root: true, timestamp: new Date().toISOString() });
+});
+
 // Mount the router at /api (standard for Vercel and local)
 app.use("/api", apiRouter);
-
-// Catch-all for API routes to help debugging - ONLY at the very end
-app.use((req, res, next) => {
-  if (req.url.startsWith("/api")) {
-    console.log(`[DEBUG] 404 API Catch-all reached: ${req.method} ${req.url} (Original: ${req.originalUrl})`);
-    return res.status(404).json({ 
-      error: `API Route not found: ${req.method} ${req.url}`,
-      originalUrl: req.originalUrl,
-      path: req.path,
-      hint: "If you see this, the request reached the Express server but didn't match any /api routes.",
-      timestamp: new Date().toISOString()
-    });
-  }
-  next();
-});
 
 // Server startup logic
 if (!process.env.VERCEL) {
@@ -367,6 +363,21 @@ if (!process.env.VERCEL) {
         res.sendFile(path.join(distPath, "index.html"));
       });
     }
+
+    // Catch-all for API routes to help debugging - ONLY at the very end
+    app.use((req, res, next) => {
+      if (req.url.startsWith("/api") || req.originalUrl.startsWith("/api")) {
+        console.log(`[DEBUG] 404 API Catch-all reached: ${req.method} ${req.url} (Original: ${req.originalUrl})`);
+        return res.status(404).json({ 
+          error: `API Route not found: ${req.method} ${req.url}`,
+          originalUrl: req.originalUrl,
+          path: req.path,
+          hint: "If you see this, the request reached the Express server but didn't match any /api routes.",
+          timestamp: new Date().toISOString()
+        });
+      }
+      next();
+    });
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`[DEBUG] Server running on http://localhost:${PORT}`);

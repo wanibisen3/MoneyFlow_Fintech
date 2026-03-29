@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.ts": {
-      "includeFiles": "api/sample_transactions.csv"
+      "includeFiles": "data/sample_transactions.csv"
     }
   },
   "rewrites": [
